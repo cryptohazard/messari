@@ -142,3 +142,37 @@ func (c *Client) assets(queryparam string) (Assets, error) {
 
 	return assets.Data, nil
 }
+
+// ProfileBySymbol returns fundamental information by asset symbol.
+func (c *Client) ProfileBySymbol(symbol string) (Profile, error) {
+	var prof struct {
+		Data Profile `json:"Data"`
+	}
+
+	response, err := c.Get(fmt.Sprintf("%v/%v/profile", apiurlassets, symbol))
+	if err != nil {
+		return Profile{}, fmt.Errorf("messari api: %v", err)
+	}
+	defer response.Body.Close()
+
+	switch response.StatusCode {
+	case 200:
+		break
+	case 400, 401, 403, 429, 500:
+		var e map[string]string
+		err = json.NewDecoder(response.Body).Decode(&e)
+		if err != nil {
+			return Profile{}, fmt.Errorf("messari api: failed to parse error body: %v", err)
+		}
+		return Profile{}, fmt.Errorf("messari api: %v", e["error_message"])
+	default:
+		return Profile{}, fmt.Errorf("messari api: returns unknown error")
+	}
+
+	err = json.NewDecoder(response.Body).Decode(&prof)
+	if err != nil {
+		return Profile{}, fmt.Errorf("messari api: failed to parse body: %v", err)
+	}
+
+	return prof.Data, nil
+}
