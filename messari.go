@@ -14,7 +14,7 @@ var (
 	apiurlassets  = fmt.Sprintf("%v/assets", apiurl)
 )
 
-// Market hold information about exchange and pair.
+// Market holds information about exchange and pair.
 type Market struct {
 	Exchange string `json:"exchange"`
 	Base     string `json:"base"`
@@ -25,6 +25,7 @@ type Market struct {
 // Markets is the list of all exchanges and pairs.
 type Markets []Market
 
+// String prints the list of Markets
 func (m Markets) String() string {
 	tablewriter.AppendHeader(table.Row{"EXCHANGE", "BASE", "QUOTE", "PAIR"})
 	for _, v := range m {
@@ -90,6 +91,7 @@ func (c *Client) Markets() (Markets, error) {
 	return markets.Data, nil
 }
 
+// Assets Actually only return the Top 20
 // Assets returns the list of all crypto assets.
 func (c *Client) Assets() (Assets, error) {
 	return c.assets("")
@@ -146,7 +148,7 @@ func (c *Client) assets(queryparam string) (Assets, error) {
 // ProfileBySymbol returns fundamental information by asset symbol.
 func (c *Client) ProfileBySymbol(symbol string) (Profile, error) {
 	var prof struct {
-		Data Profile `json:"Data"`
+		Data Profile `json:"data"`
 	}
 
 	response, err := c.Get(fmt.Sprintf("%v/%v/profile", apiurlassets, symbol))
@@ -175,4 +177,38 @@ func (c *Client) ProfileBySymbol(symbol string) (Profile, error) {
 	}
 
 	return prof.Data, nil
+}
+
+// GetMetricsBySymbol returns quantitative metrics by asset symbol.
+func (c *Client) GetMetricsBySymbol(symbol string) (Metrics, error) {
+	var metrics struct {
+		Data Metrics `json:"data"`
+	}
+
+	response, err := c.Get(fmt.Sprintf("%v/%v/metrics", apiurlassets, symbol))
+	if err != nil {
+		return Metrics{}, fmt.Errorf("messari api: %v", err)
+	}
+	defer response.Body.Close()
+
+	switch response.StatusCode {
+	case 200:
+		break
+	case 400, 401, 403, 429, 500:
+		var e map[string]string
+		err = json.NewDecoder(response.Body).Decode(&e)
+		if err != nil {
+			return Metrics{}, fmt.Errorf("messari api: failed to parse error body: %v", err)
+		}
+		return Metrics{}, fmt.Errorf("messari api: %v", e["error_message"])
+	default:
+		return Metrics{}, fmt.Errorf("messari api: returns unknown error")
+	}
+
+	err = json.NewDecoder(response.Body).Decode(&metrics)
+	if err != nil {
+		return Metrics{}, fmt.Errorf("messari api: failed to parse body: %v", err)
+	}
+
+	return metrics.Data, nil
 }
