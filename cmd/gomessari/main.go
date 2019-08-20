@@ -14,10 +14,16 @@ func main() {
 	}
 	fmt.Println(markets.String())*/
 
-	assets, err := client.Assets()
+	/*assets, err := client.Assets()
 	if err != nil {
 		log.Fatal("unexpected error\n", err)
 	}
-	fmt.Println(assets.String())
+	fmt.Println(assets.String())*/
+
+	news, err := client.News()
+	if err != nil {
+		log.Fatal("unexpected error\n", err)
+	}
+	fmt.Println(news.String())
 
 }

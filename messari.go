@@ -12,6 +12,7 @@ var (
 	apiurl        = "https://data.messari.io/api/v1"
 	apiurlmarkets = fmt.Sprintf("%v/markets", apiurl)
 	apiurlassets  = fmt.Sprintf("%v/assets", apiurl)
+	apiurlnews		= fmt.Sprintf("%v/news", apiurl)
 )
 
 // Market holds information about exchange and pair.
@@ -114,7 +115,7 @@ func (c *Client) AssetsWithMetricsAndProfiles() (Assets, error) {
 
 func (c *Client) assets(queryparam string) (Assets, error) {
 	var assets struct {
-		Data []Asset `json:"data"`
+		Data Assets `json:"data"`
 	}
 
 	response, err := c.Get(fmt.Sprintf("%v%v", apiurlassets, queryparam))
@@ -180,7 +181,7 @@ func (c *Client) ProfileBySymbol(symbol string) (Profile, error) {
 }
 
 // GetMetricsBySymbol returns quantitative metrics by asset symbol.
-func (c *Client) GetMetricsBySymbol(symbol string) (Metrics, error) {
+func (c *Client) MetricsBySymbol(symbol string) (Metrics, error) {
 	var metrics struct {
 		Data Metrics `json:"data"`
 	}
@@ -211,4 +212,73 @@ func (c *Client) GetMetricsBySymbol(symbol string) (Metrics, error) {
 	}
 
 	return metrics.Data, nil
+}
+
+
+// News returns  the latest 50 curated articles of news and analysis for all assets.
+func (c *Client) News() (AllNews, error) {
+	var news struct {
+		Data AllNews `json:"data"`
+	}
+
+	response, err := c.Get(apiurlnews)
+	if err != nil {
+		return AllNews{}, fmt.Errorf("messari api: %v", err)
+	}
+	defer response.Body.Close()
+
+	switch response.StatusCode {
+	case 200:
+		break
+	case 400, 401, 403, 429, 500:
+		var e map[string]string
+		err = json.NewDecoder(response.Body).Decode(&e)
+		if err != nil {
+			return AllNews{}, fmt.Errorf("messari api: failed to parse error body: %v", err)
+		}
+		return AllNews{}, fmt.Errorf("messari api: %v", e["error_message"])
+	default:
+		return AllNews{}, fmt.Errorf("messari api: returns unknown error")
+	}
+
+	err = json.NewDecoder(response.Body).Decode(&news)
+	if err != nil {
+		return AllNews{}, fmt.Errorf("messari api: failed to parse body: %v", err)
+	}
+
+	return news.Data, nil
+}
+
+//NewsBySymbol returns the latest curated articles of news and analysis by asset symbol.
+func (c *Client) NewsBySymbol(symbol string) (AllNews, error) {
+	var news struct {
+		Data AllNews `json:"data"`
+	}
+
+	response, err := c.Get(fmt.Sprintf("%v/%v", apiurlnews, symbol))
+	if err != nil {
+		return AllNews{}, fmt.Errorf("messari api: %v", err)
+	}
+	defer response.Body.Close()
+
+	switch response.StatusCode {
+	case 200:
+		break
+	case 400, 401, 403, 429, 500:
+		var e map[string]string
+		err = json.NewDecoder(response.Body).Decode(&e)
+		if err != nil {
+			return AllNews{}, fmt.Errorf("messari api: failed to parse error body: %v", err)
+		}
+		return AllNews{}, fmt.Errorf("messari api: %v", e["error_message"])
+	default:
+		return AllNews{}, fmt.Errorf("messari api: returns unknown error")
+	}
+
+	err = json.NewDecoder(response.Body).Decode(&news)
+	if err != nil {
+		return AllNews{}, fmt.Errorf("messari api: failed to parse body: %v", err)
+	}
+
+	return news.Data, nil
 }

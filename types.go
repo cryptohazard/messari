@@ -51,7 +51,7 @@ type Profile struct {
 	} `json:"relevant_resources"`
 }
 
-// Metrics
+// Metrics Get quantitative metrics by asset symbol.
 type Metrics struct {
 	ID         string `json:"id"`
 	Symbol     string `json:"symbol"`
